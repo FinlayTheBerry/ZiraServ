@@ -10,7 +10,6 @@ qemu-system-x86_64 \
   -smp cores=4 \
   -m 8G \
   -drive file=./disk.img,format=raw \
-  -cdrom ./win10.iso \
   -display sdl -vga std \
   -audiodev pa,id=snd0,out.frequency=48000 -device ich9-intel-hda -device hda-output,audiodev=snd0 \
   -device virtio-net-pci,netdev=net0 -netdev user,id=net0,hostfwd=tcp::41875-:41875 \
