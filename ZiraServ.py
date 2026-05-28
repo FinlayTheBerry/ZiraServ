@@ -1,7 +1,26 @@
 import win32com.client
+import subprocess
 import os
 import threading
 import flask
+import time
+
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+def RunCommand(command, echo=False, capture=False, input=None, check=True, env=None):
+    if echo and capture:
+        raise Exception("Command cannot be run with both echo and capture.")
+    result = subprocess.run(command, stdout=(None if echo else subprocess.PIPE), stderr=(None if echo else subprocess.STDOUT), input=input, env=env, check=False, shell=True, text=True)
+    if check and result.returncode != 0:
+        raise Exception(f"Sub-process returned non-zero exit code.\nExitCode: {result.returncode}\nCmdLine: {command}\n\n{result.stdout}")
+    if capture and not check:
+        return result.stdout.strip(), result.returncode
+    elif capture:
+        return result.stdout.strip()
+    elif not check:
+        return result.returncode
+    else:
+        return
 
 def FormatInput(inputString):
     inputString = "".join([ "." if c in "?!:;" else c for c in inputString ])
@@ -53,18 +72,26 @@ def flaskThreadMain():
 
     @app.route("/")
     def serve_file():
-        return flask.send_from_directory(os.getcwd(), "index.html")
+        return flask.send_from_directory(os.getcwd(), "ZiraServ.html")
 
     app.run(host="0.0.0.0", port=41875) # Port is (('Z' + 'I') << 8) | ('R' + 'A')
 
-flaskThread = threading.Thread(target=flaskThreadMain, daemon=True)
-flaskThread.start()
+def Main():
+    global InProgressRequest
 
-while True:
-    if InProgressRequest == None:
-        continue
-    print("Main thread got new request.")
-    requestFormatted = FormatInput(InProgressRequest)
-    SpeekToFile(requestFormatted, "output.wav")
-    InProgressRequest = None
-    print("Request complete.")
+    flaskThread = threading.Thread(target=flaskThreadMain, daemon=True)
+    flaskThread.start()
+
+    while True:
+        if InProgressRequest == None:
+            time.sleep(0.1)
+            continue
+        print("Main thread got new request.")
+        requestFormatted = FormatInput(InProgressRequest)
+        SpeekToFile(requestFormatted, "output.wav")
+        InProgressRequest = None
+        print("Request complete.")
+try:
+    Main()
+except KeyboardInterrupt:
+    RunCommand("shutdown /s /f /t 0")
